@@ -9,20 +9,32 @@ import { CategoriesModule } from './categories/categories.module';
 import { BrandModule } from './brand/brand.module';
 import { UnitsModule } from './units/units.module';
 import { SubCategoriesModule } from './sub-categories/sub-categories.module';
+import { BlobModule } from './blob/blob.module';
+import * as Joi from 'joi';
+import { MulterModule } from '@nestjs/platform-express';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validationSchema: Joi.object({
+        JWT_SECRET: Joi.string().required(),
+        PORT: Joi.number().default(3000),
+        MONGO_URI: Joi.string().uri().required(),
+      }),
     }),
     MongooseModule.forRoot(process.env.MONGO_URI ?? ''),
+    MulterModule.register({
+      dest: './uploads',
+    }),
     AuthModule,
     UsersModule,
     ProductsModule,
     CategoriesModule,
+    SubCategoriesModule,
     BrandModule,
     UnitsModule,
-    SubCategoriesModule,
+    BlobModule,
   ],
   controllers: [AppController],
   providers: [],

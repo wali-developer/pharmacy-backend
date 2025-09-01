@@ -1,9 +1,13 @@
-import { Injectable } from '@nestjs/common';
-import { CreateCategoryDto } from './dto/create-category.dto';
-import { UpdateCategoryDto } from './dto/update-category.dto';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Category, CategoryDocument } from './schemas/product.schema';
+import { Category, CategoryDocument } from './schemas/category.schema';
 import { Model } from 'mongoose';
+import { paginate } from 'src/common/utils';
+import {
+  CreateCategoryDto,
+  QueryCategoryDto,
+  UpdateCategoryDto,
+} from './dto/category.dto';
 
 @Injectable()
 export class CategoriesService {
@@ -11,25 +15,53 @@ export class CategoriesService {
     @InjectModel(Category.name) private Category: Model<CategoryDocument>,
   ) {}
 
-  create(dto: CreateCategoryDto) {
-    return this.Category.create(dto);
+  async create(dto: CreateCategoryDto) {
+    return await this.Category.create(dto);
   }
 
-  findAll() {
-    return this.Category.find();
-  }
+  async findAll(query: QueryCategoryDto) {
+    const { page, limit, search, status } = query;
 
-  findOne(id: number) {
-    return this.Category.findById(id);
-  }
+    const filters: {
+      name?: string | { $regex: string; $options: string };
+      status?: string;
+    } = {};
+    if (search) {
+      filters.name = { $regex: search, $options: 'i' };
+    }
+    if (status) {
+      filters.status = status;
+    }
 
-  update(id: number, updateCategoryDto: UpdateCategoryDto) {
-    return this.Category.findByIdAndUpdate(id, updateCategoryDto, {
-      new: true,
+    return await paginate(this.Category, filters, {
+      page: parseInt(page as string) || 1,
+      limit: parseInt(limit as string) || 20,
     });
   }
 
-  remove(id: number) {
-    return this.Category.findByIdAndDelete(id);
+  async findOne(id: string) {
+    return await this.Category.findById(id);
+  }
+
+  async update(id: string, updateCategoryDto: UpdateCategoryDto) {
+    const updatedCat = await this.Category.findByIdAndUpdate(
+      id,
+      updateCategoryDto,
+      {
+        new: true,
+      },
+    );
+    if (!updatedCat) {
+      throw new NotFoundException(`Category with id ${id} not found`);
+    }
+    return updatedCat;
+  }
+
+  async remove(id: string) {
+    const deleted = await this.Category.findByIdAndDelete(id);
+    if (!deleted) {
+      throw new NotFoundException(`Brand not found`);
+    }
+    return deleted;
   }
 }

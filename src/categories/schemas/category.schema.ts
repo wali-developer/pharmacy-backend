@@ -3,9 +3,9 @@ import { Document } from 'mongoose';
 
 export type CategoryDocument = Category & Document;
 
-@Schema()
+@Schema({ timestamps: true })
 export class Category {
-  @Prop({ required: true })
+  @Prop({ required: true, unique: true })
   name: string;
 
   @Prop({ default: null })
@@ -13,6 +13,9 @@ export class Category {
 
   @Prop({ default: null })
   icon: string;
+
+  @Prop({ enum: ['Active', 'Inactive'], default: 'Active' })
+  status: string;
 }
 
 export const CategorySchema = SchemaFactory.createForClass(Category);

@@ -1,26 +1,58 @@
-import { Injectable } from '@nestjs/common';
-import { CreateUnitDto } from './dto/create-unit.dto';
-import { UpdateUnitDto } from './dto/update-unit.dto';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { Unit, UnitDocument } from './schemas/unit.schema';
+import { InjectModel } from '@nestjs/mongoose';
+import { CreateUnitDto, UpdateUnitDto } from './dto/unit.dto';
+import { Model } from 'mongoose';
+import { ICommonQueryParams } from 'src/common/dto/common.dto';
+import { paginate } from 'src/common/utils';
 
 @Injectable()
 export class UnitsService {
-  create(createUnitDto: CreateUnitDto) {
-    return 'This action adds a new unit';
+  constructor(@InjectModel(Unit.name) private model: Model<UnitDocument>) {}
+
+  async create(dto: CreateUnitDto) {
+    return await this.model.create(dto);
   }
 
-  findAll() {
-    return `This action returns all units`;
+  async findAll(query: ICommonQueryParams) {
+    const { page, limit, search, status } = query;
+
+    const filters: {
+      name?: string | { $regex: string; $options: string };
+      status?: string;
+    } = {};
+    if (search) {
+      filters.name = { $regex: search, $options: 'i' };
+    }
+    if (status) {
+      filters.status = status;
+    }
+
+    return await paginate(this.model, filters, {
+      page: parseInt(page as string) || 1,
+      limit: parseInt(limit as string) || 20,
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} unit`;
+  async findOne(id: string) {
+    return await this.model.findById(id);
   }
 
-  update(id: number, updateUnitDto: UpdateUnitDto) {
-    return `This action updates a #${id} unit`;
+  async update(id: string, dto: UpdateUnitDto) {
+    const updatedUnit = await this.model.findByIdAndUpdate(id, dto, {
+      new: true,
+    });
+    if (!updatedUnit) {
+      throw new NotFoundException(`Category with id ${id} not found`);
+    }
+    return updatedUnit;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} unit`;
+  async remove(id: string) {
+    const deleted = await this.model.findByIdAndDelete(id);
+    if (!deleted) {
+      throw new NotFoundException(`Unit not found`);
+    }
+    return deleted;
   }
 }
